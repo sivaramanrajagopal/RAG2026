@@ -3,11 +3,9 @@ nixPkgs = ["python39", "python39Packages.pip", "python39Packages.setuptools", "p
 
 [phases.install]
 cmds = [
-  "cd backend",
-  "python3 -m venv venv",
-  "source venv/bin/activate",
-  "pip install --upgrade pip setuptools wheel",
-  "pip install -r requirements.txt"
+  "cd backend && python3 -m venv venv",
+  "cd backend && venv/bin/pip install --upgrade pip setuptools wheel",
+  "cd backend && venv/bin/pip install -r requirements.txt"
 ]
 
 [phases.build]

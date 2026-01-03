@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="RAG Web App - Upload PDFs and ask questions using Retrieval-Augmented Generation">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <title>RAG Web App</title>
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --primary-dark: #764ba2;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --warning-color: #ff9800;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: clamp(1.8em, 4vw, 2.5em);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: clamp(0.9em, 2vw, 1.1em);
+            opacity: 0.95;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            body {
+                padding: 10px;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: clamp(1.2em, 3vw, 1.5em);
+            font-weight: 600;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-area:hover,
+        .upload-area:focus-within {
+            background: #f8f9ff;
+            border-color: var(--primary-dark);
+        }
+
+        .upload-area.dragover {
+            background: #e8eaff;
+            border-color: var(--primary-dark);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .btn {
+            background: var(--bg-gradient);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: var(--transition);
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .query-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .query-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            word-wrap: break-word;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .result-text {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .score {
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .score-high {
+            background: var(--success-color);
+        }
+
+        .score-medium {
+            background: var(--warning-color);
+        }
+
+        .score-low {
+            background: var(--error-color);
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--primary-color);
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--bg-gradient);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .sessions-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .sessions-list li {
+            padding: 12px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .delete-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .delete-btn:focus {
+            outline: 2px solid var(--error-color);
+            outline-offset: 2px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .voice-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .voice-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .voice-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .voice-btn.recording {
+            background: var(--error-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .voice-btn.playing {
+            background: var(--success-color);
+        }
+
+        .voice-status {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+            min-height: 20px;
+        }
+
+        .query-input-container {
+            position: relative;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1em;
+            color: #666;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            color: var(--primary-color);
+            background: #f5f5f5;
+        }
+        
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: transparent;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Technical Info */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .tech-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .tech-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tech-card .value {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .tech-card .label {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* Dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .dashboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .dashboard-card h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        @media (max-width: 768px) {
+            .metric-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            
+            .metric-label {
+                width: 100%;
+            }
+            
+            .metric-value {
+                align-self: flex-end;
+            }
+        }
+        
+        .score-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--error-color), var(--warning-color), var(--success-color));
+            transition: width 0.3s ease;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        
+        .chart-container {
+            height: 200px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            background: var(--primary-color);
+            border-radius: 4px 4px 0 0;
+            min-height: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .chart-bar:hover {
+            opacity: 0.8;
+            transform: scaleY(1.05);
+        }
+        
+        .chart-bar::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        .mic-icon, .play-icon, .stop-icon {
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 15px;
+            }
+            
+            .upload-area {
+                padding: 20px 15px;
+            }
+            
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .voice-btn {
+                padding: 12px 16px;
+                font-size: 1em;
+                min-height: 44px; /* iOS touch target minimum */
+            }
+            
+            .btn {
+                min-height: 44px; /* iOS touch target minimum */
+                font-size: 1em;
+            }
+            
+            .query-input {
+                font-size: 16px; /* Prevents iOS zoom on focus */
+                min-height: 44px;
+            }
+        }
+        
+        /* iOS Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            .query-input {
+                font-size: 16px; /* Prevents zoom on focus in iOS */
+            }
+            
+            .voice-btn {
+                -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+            }
+            
+            .btn {
+                -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+            }
+        }
+        
+        /* Android Chrome specific */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            .voice-btn:active {
+                background: var(--primary-dark);
+                transform: scale(0.98);
+            }
+        }
+        
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .voice-btn:hover {
+                transform: none;
+            }
+            
+            .btn:hover {
+                transform: none;
+            }
+            
+            .voice-btn:active {
+                transform: scale(0.95);
+            }
+            
+            .btn:active {
+                transform: scale(0.98);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header" role="banner">
+            <h1>RAG Web Application</h1>
+            <p>Upload PDFs, process web URLs, and ask questions using Retrieval-Augmented Generation</p>
+        </header>
+
+        <main class="main-content" role="main">
+            <!-- Upload Section -->
+            <section class="card" aria-labelledby="upload-heading">
+                <h2 id="upload-heading">Upload Documents</h2>
+                <div 
+                    class="upload-area" 
+                    id="uploadArea" 
+                    role="button" 
+                    tabindex="0"
+                    aria-label="Upload PDF file"
+                    aria-describedby="upload-instructions"
+                >
+                    <div class="upload-icon" aria-hidden="true">📄</div>
+                    <p id="upload-instructions">Drag and drop a PDF file here</p>
+                    <p style="color: #666; font-size: 0.9em; margin-top: 5px;">or click to browse</p>
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        accept=".pdf"
+                        aria-label="Select PDF file"
+                    >
+                </div>
+                <div id="uploadStatus" role="status" aria-live="polite"></div>
+                <button 
+                    class="btn" 
+                    id="uploadBtn" 
+                    disabled
+                    aria-label="Upload selected PDF file"
+                >
+                    Upload PDF
+                </button>
+                <div id="fileInfo" class="file-info" style="display: none;" aria-live="polite">
+                    <span id="fileName"></span>
+                    <span class="file-size" id="fileSize"></span>
+                </div>
+
+                <h2 style="margin-top: 30px;">Process Web URL</h2>
+                <div style="margin-bottom: 15px;">
+                    <label for="urlInput" class="sr-only">Enter web URL</label>
+                    <input 
+                        type="url" 
+                        class="query-input" 
+                        id="urlInput" 
+                        placeholder="https://example.com/article"
+                        aria-label="Web URL input"
+                        style="width: 100%; margin-bottom: 10px;"
+                    >
+                    <button 
+                        class="btn" 
+                        id="processUrlBtn"
+                        aria-label="Process URL and generate summary"
+                        style="width: 100%;"
+                    >
+                        📎 Process URL & Generate Summary
+                    </button>
+                </div>
+                <div id="urlStatus" role="status" aria-live="polite"></div>
+                <div id="urlSummary" style="display: none; margin-top: 15px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid var(--primary-color);"></div>
+
+                <h2 style="margin-top: 30px;">Active Sessions</h2>
+                <div id="sessionsList" role="list" aria-label="List of active sessions"></div>
+            </section>
+
+            <!-- Query Section -->
+            <section class="card" aria-labelledby="query-heading">
+                <h2 id="query-heading">Ask Questions</h2>
+                
+                <!-- Tabs -->
+                <div class="tabs" role="tablist">
+                    <button class="tab active" data-tab="query" role="tab" aria-selected="true">Query</button>
+                    <button class="tab" data-tab="technical" role="tab" aria-selected="false">Technical Info</button>
+                    <button class="tab" data-tab="dashboard" role="tab" aria-selected="false">RAG Dashboard</button>
+                </div>
+                
+                <!-- Query Tab -->
+                <div id="queryTab" class="tab-content active" role="tabpanel">
+                <label for="sessionSelect" class="sr-only">Select a session</label>
+                <select 
+                    class="query-input" 
+                    id="sessionSelect"
+                    aria-label="Select a session to query"
+                    style="margin-bottom: 15px;"
+                >
+                    <option value="">Select a session...</option>
+                </select>
+                <div class="query-input-container">
+                    <label for="queryInput" class="sr-only">Enter your question</label>
+                    <input 
+                        type="text" 
+                        class="query-input" 
+                        id="queryInput" 
+                        placeholder="Enter your question here or use voice search..."
+                        aria-label="Question input"
+                        maxlength="500"
+                    >
+                    <button 
+                        class="voice-btn" 
+                        id="voiceSearchBtn"
+                        aria-label="Start voice search"
+                        title="Click to search by voice"
+                    >
+                        <span class="mic-icon">🎤</span>
+                        <span id="voiceSearchText">Voice Search</span>
+                    </button>
+                </div>
+                <div class="voice-status" id="voiceStatus" role="status" aria-live="polite"></div>
+                <button 
+                    class="btn" 
+                    id="queryBtn"
+                    aria-label="Submit question"
+                >
+                    Ask Question
+                </button>
+                
+                <div id="queryStatus" role="status" aria-live="polite"></div>
+                <div id="results" aria-live="polite"></div>
+                </div>
+                
+                <!-- Technical Info Tab -->
+                <div id="technicalTab" class="tab-content" role="tabpanel">
+                    <h3 style="margin-bottom: 20px;">Technical Information</h3>
+                    <div id="technicalInfo" style="color: #666; text-align: center; padding: 40px;">
+                        <p>Select a session and ask a question to view technical details</p>
+                    </div>
+                </div>
+                
+                <!-- RAG Dashboard Tab -->
+                <div id="dashboardTab" class="tab-content" role="tabpanel">
+                    <h3 style="margin-bottom: 20px;">RAG Dashboard</h3>
+                    <div id="ragDashboard" style="color: #666; text-align: center; padding: 40px;">
+                        <p>Select a session and ask a question to view dashboard analytics</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Configuration - Railway compatible
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
+
+        // Constants
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const REQUEST_TIMEOUT = 60000; // 60 seconds
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const queryInput = document.getElementById('queryInput');
+        const queryBtn = document.getElementById('queryBtn');
+        const queryStatus = document.getElementById('queryStatus');
+        const results = document.getElementById('results');
+        const sessionsList = document.getElementById('sessionsList');
+        const sessionSelect = document.getElementById('sessionSelect');
+        const voiceSearchBtn = document.getElementById('voiceSearchBtn');
+        const voiceSearchText = document.getElementById('voiceSearchText');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const urlInput = document.getElementById('urlInput');
+        const processUrlBtn = document.getElementById('processUrlBtn');
+        const urlStatus = document.getElementById('urlStatus');
+        const urlSummary = document.getElementById('urlSummary');
+
+        let selectedFile = null;
+        let currentSessionId = null;
+        let abortController = null;
+        
+        // Voice features
+        let recognition = null;
+        let synthesis = null;
+        let isRecording = false;
+        let isPlaying = false;
+        let currentUtterance = null;
+        
+        // Initialize Web Speech API
+        function initSpeechAPI() {
+            // Speech Recognition (Voice Search)
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = () => {
+                    isRecording = true;
+                    voiceSearchBtn.classList.add('recording');
+                    voiceSearchBtn.disabled = false;
+                    voiceSearchText.textContent = 'Listening...';
+                    showInfo(voiceStatus, 'Listening... Speak your question.');
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    queryInput.value = transcript;
+                    showInfo(voiceStatus, `Recognized: ${transcript}`);
+                };
+                
+                recognition.onerror = (event) => {
+                    isRecording = false;
+                    voiceSearchBtn.classList.remove('recording');
+                    voiceSearchText.textContent = 'Voice Search';
+                    
+                    let errorMsg = 'Voice recognition error. ';
+                    if (event.error === 'no-speech') {
+                        errorMsg += 'No speech detected.';
+                    } else if (event.error === 'audio-capture') {
+                        errorMsg += 'No microphone found.';
+                    } else if (event.error === 'not-allowed') {
+                        errorMsg += 'Microphone permission denied.';
+                    } else {
+                        errorMsg += 'Please try again.';
+                    }
+                    showError(voiceStatus, errorMsg);
+                };
+                
+                recognition.onend = () => {
+                    isRecording = false;
+                    voiceSearchBtn.classList.remove('recording');
+                    voiceSearchText.textContent = 'Voice Search';
+                };
+            } else {
+                if (voiceSearchBtn) voiceSearchBtn.style.display = 'none';
+                if (voiceStatus) showInfo(voiceStatus, 'Voice search not supported in this browser.');
+            }
+            
+            // Speech Synthesis (Text-to-Speech)
+            if ('speechSynthesis' in window) {
+                synthesis = window.speechSynthesis;
+            }
+        }
+        
+        // Initialize on page load (after DOM is ready)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSpeechAPI);
+        } else {
+            initSpeechAPI();
+        }
+
+        // Utility: Sanitize text to prevent XSS
+        function sanitizeText(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Utility: Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Utility: Create element with text (safe from XSS)
+        function createElement(tag, text, className = '') {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            el.textContent = text;
+            return el;
+        }
+
+        // Utility: Fetch with timeout
+        async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT) {
+            abortController = new AbortController();
+            const timeoutId = setTimeout(() => abortController.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: abortController.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout. Please try again.');
+                }
+                throw error;
+            }
+        }
+
+        // File validation
+        function validateFile(file) {
+            if (!file) {
+                showError(uploadStatus, 'Please select a file');
+                return false;
+            }
+
+            if (file.type !== 'application/pdf') {
+                showError(uploadStatus, 'Only PDF files are supported');
+                return false;
+            }
+
+            if (file.size > MAX_FILE_SIZE) {
+                showError(uploadStatus, `File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`);
+                return false;
+            }
+
+            return true;
+        }
+
+        // Show error message
+        function showError(container, message) {
+            container.innerHTML = `<div class="status error" role="alert">${sanitizeText(message)}</div>`;
+        }
+
+        // Show success message
+        function showSuccess(container, message) {
+            container.innerHTML = `<div class="status success">${sanitizeText(message)}</div>`;
+        }
+
+        // Show info message
+        function showInfo(container, message) {
+            container.innerHTML = `<div class="status info">${sanitizeText(message)}</div>`;
+        }
+
+        // Show loading state
+        function showLoading(container, message = 'Loading...') {
+            container.innerHTML = `
+                <div class="loading" role="status" aria-live="polite">
+                    <div class="spinner" aria-hidden="true"></div>
+                    <p>${sanitizeText(message)}</p>
+                </div>
+            `;
+        }
+
+        // Upload area interactions
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && validateFile(file)) {
+                selectedFile = file;
+                uploadBtn.disabled = false;
+                showInfo(uploadStatus, `Selected: ${sanitizeText(file.name)}`);
+                
+                // Show file info
+                fileName.textContent = sanitizeText(file.name);
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = 'flex';
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && validateFile(file)) {
+                selectedFile = file;
+                fileInput.files = e.dataTransfer.files;
+                uploadBtn.disabled = false;
+                showInfo(uploadStatus, `Selected: ${sanitizeText(file.name)}`);
+                
+                // Show file info
+                fileName.textContent = sanitizeText(file.name);
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = 'flex';
+            }
+        });
+
+        // Upload file
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile || !validateFile(selectedFile)) return;
+
+            uploadBtn.disabled = true;
+            showLoading(uploadStatus, 'Uploading and processing PDF...');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetchWithTimeout(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Upload failed');
+                }
+
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                
+                showSuccess(uploadStatus, `File uploaded successfully! Session: ${data.session_id.substring(0, 8)}...`);
+                fileInput.value = '';
+                selectedFile = null;
+                uploadBtn.disabled = true;
+                fileInfo.style.display = 'none';
+                
+                // Auto-select the new session
+                sessionSelect.value = data.session_id;
+                if (!Array.from(sessionSelect.options).some(opt => opt.value === data.session_id)) {
+                    const option = createElement('option', `Session: ${data.session_id.substring(0, 8)}...`);
+                    option.value = data.session_id;
+                    sessionSelect.appendChild(option);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showError(uploadStatus, 'Upload timeout. Please try again.');
+                } else {
+                    showError(uploadStatus, `Error: ${error.message}`);
+                }
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // URL validation
+        function validateURL(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
+        // Process URL handler
+        processUrlBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showError(urlStatus, 'Please enter a URL');
+                urlInput.focus();
+                return;
+            }
+            
+            if (!validateURL(url)) {
+                showError(urlStatus, 'Please enter a valid URL (must start with http:// or https://)');
+                urlInput.focus();
+                return;
+            }
+            
+            processUrlBtn.disabled = true;
+            showLoading(urlStatus, 'Processing URL and generating summary...');
+            urlSummary.style.display = 'none';
+            
+            try {
+                const response = await fetchWithTimeout(`${API_URL}/process-url`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'URL processing failed');
+                }
+                
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                
+                showSuccess(urlStatus, `URL processed successfully! Session: ${data.session_id.substring(0, 8)}...`);
+                
+                // Display summary
+                urlSummary.innerHTML = `
+                    <h4 style="margin-bottom: 10px; color: #333;">📄 Summary:</h4>
+                    <p style="white-space: pre-wrap; line-height: 1.6; color: #555;">${sanitizeText(data.summary)}</p>
+                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <strong>Source:</strong> <a href="${sanitizeText(data.url)}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${sanitizeText(data.url)}</a>
+                    </p>
+                `;
+                urlSummary.style.display = 'block';
+                
+                urlInput.value = '';
+                
+                // Auto-select the new session
+                sessionSelect.value = data.session_id;
+                if (!Array.from(sessionSelect.options).some(opt => opt.value === data.session_id)) {
+                    const option = createElement('option', `URL: ${new URL(data.url).hostname.substring(0, 20)}...`);
+                    option.value = data.session_id;
+                    sessionSelect.appendChild(option);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showError(urlStatus, 'Request timeout. Please try again.');
+                } else {
+                    showError(urlStatus, `Error: ${error.message}`);
+                }
+            } finally {
+                processUrlBtn.disabled = false;
+            }
+        });
+        
+        // Allow Enter key to process URL
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processUrlBtn.click();
+            }
+        });
+
+        // Voice search handler
+        voiceSearchBtn.addEventListener('click', () => {
+            if (!recognition) {
+                showError(voiceStatus, 'Voice recognition not available in this browser.');
+                return;
+            }
+            
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (error) {
+                    showError(voiceStatus, 'Could not start voice recognition. Please try again.');
+                }
+            }
+        });
+        
+        // Query handlers
+        queryBtn.addEventListener('click', performQuery);
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                performQuery();
+            }
+        });
+
+        async function performQuery() {
+            const question = queryInput.value.trim();
+            const sessionId = sessionSelect.value;
+            
+            if (!question) {
+                showError(queryStatus, 'Please enter a question');
+                queryInput.focus();
+                return;
+            }
+            
+            if (!sessionId) {
+                showError(queryStatus, 'Please select a session');
+                sessionSelect.focus();
+                return;
+            }
+
+            // Cancel previous request if any
+            if (abortController) {
+                abortController.abort();
+            }
+
+            queryBtn.disabled = true;
+            showLoading(queryStatus, 'Generating answer...');
+            results.innerHTML = '';
+
+            try {
+                const response = await fetchWithTimeout(`${API_URL}/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        session_id: sessionId,
+                        question: question
+                    })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || data.detail || 'Query failed');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(queryStatus, data.error);
+                } else {
+                    queryStatus.innerHTML = '';
+                    displayAnswer(data);
+                    if (data.technical_info) {
+                        displayTechnicalInfo(data.technical_info);
+                        displayDashboard(data.technical_info, data.metadata);
+                    }
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showError(queryStatus, 'Request timeout. Please try again.');
+                } else {
+                    showError(queryStatus, `Error: ${error.message}`);
+                }
+            } finally {
+                queryBtn.disabled = false;
+            }
+        }
+
+        function displayAnswer(data) {
+            const answerHeading = createElement('h3', 'Answer:', '');
+            answerHeading.style.marginBottom = '15px';
+            results.appendChild(answerHeading);
+            
+            // Voice controls container
+            const voiceControlsDiv = createElement('div', '', 'voice-controls');
+            voiceControlsDiv.style.marginBottom = '15px';
+            
+            const playBtn = createElement('button', '', 'voice-btn');
+            playBtn.id = 'playAnswerBtn';
+            playBtn.setAttribute('aria-label', 'Play answer');
+            playBtn.title = 'Play answer audio';
+            const playIcon = createElement('span', '▶️', 'play-icon');
+            const playText = createElement('span', 'Play Answer');
+            playBtn.appendChild(playIcon);
+            playBtn.appendChild(playText);
+            
+            const stopBtn = createElement('button', '', 'voice-btn');
+            stopBtn.id = 'stopAnswerBtn';
+            stopBtn.setAttribute('aria-label', 'Stop audio');
+            stopBtn.title = 'Stop audio';
+            stopBtn.style.display = 'none';
+            const stopIcon = createElement('span', '⏹️', 'stop-icon');
+            const stopText = createElement('span', 'Stop');
+            stopBtn.appendChild(stopIcon);
+            stopBtn.appendChild(stopText);
+            
+            // Play button handler
+            playBtn.addEventListener('click', () => {
+                if (!synthesis) {
+                    showError(queryStatus, 'Text-to-speech not supported in this browser.');
+                    return;
+                }
+                
+                if (isPlaying) {
+                    synthesis.cancel();
+                    isPlaying = false;
+                    playBtn.style.display = 'flex';
+                    stopBtn.style.display = 'none';
+                    playBtn.classList.remove('playing');
+                } else {
+                    speakText(data.answer);
+                    playBtn.style.display = 'none';
+                    stopBtn.style.display = 'flex';
+                    playBtn.classList.add('playing');
+                }
+            });
+            
+            // Stop button handler
+            stopBtn.addEventListener('click', () => {
+                synthesis.cancel();
+                isPlaying = false;
+                playBtn.style.display = 'flex';
+                stopBtn.style.display = 'none';
+                playBtn.classList.remove('playing');
+            });
+            
+            voiceControlsDiv.appendChild(playBtn);
+            voiceControlsDiv.appendChild(stopBtn);
+            results.appendChild(voiceControlsDiv);
+            
+            // Display the LLM-generated answer (sanitized)
+            const answerDiv = createElement('div', '', 'result-item');
+            answerDiv.style.background = '#e8f5e9';
+            answerDiv.style.borderLeft = '4px solid #4caf50';
+            
+            const answerText = createElement('div', data.answer, 'result-text');
+            answerText.style.whiteSpace = 'pre-wrap';
+            answerText.style.fontSize = '1.05em';
+            answerText.style.lineHeight = '1.8';
+            answerDiv.appendChild(answerText);
+            results.appendChild(answerDiv);
+            
+            // Display source metadata with similarity scores
+            if (data.metadata && data.metadata.length > 0) {
+                const metadataDiv = createElement('div', '', '');
+                metadataDiv.style.marginTop = '20px';
+                
+                const sourcesHeading = createElement('h4', 'Sources (with similarity scores):', '');
+                sourcesHeading.style.marginBottom = '10px';
+                sourcesHeading.style.color = '#666';
+                metadataDiv.appendChild(sourcesHeading);
+                
+                data.metadata.forEach((meta) => {
+                    const metaDiv = createElement('div', '', 'result-item');
+                    metaDiv.style.marginBottom = '10px';
+                    
+                    const header = createElement('div', '', 'result-header');
+                    
+                    const headerText = createElement('span', '', '');
+                    const chunkText = createElement('strong', `Chunk ${meta.chunk_id}`, '');
+                    headerText.appendChild(chunkText);
+                    headerText.appendChild(document.createTextNode(` - ${meta.source}`));
+                    
+                    if (meta.score !== undefined) {
+                        const scoreSpan = createElement('span', `Score: ${meta.score}`, 'score');
+                        const scoreColor = meta.score >= 0.8 ? 'score-high' : meta.score >= 0.6 ? 'score-medium' : 'score-low';
+                        scoreSpan.className = `score ${scoreColor}`;
+                        headerText.appendChild(document.createTextNode(' '));
+                        headerText.appendChild(scoreSpan);
+                    }
+                    
+                    if (meta.page !== undefined) {
+                        const pageSpan = createElement('span', `(Page ${meta.page})`, '');
+                        pageSpan.style.color = '#666';
+                        pageSpan.style.fontSize = '0.9em';
+                        headerText.appendChild(document.createTextNode(' '));
+                        headerText.appendChild(pageSpan);
+                    }
+                    
+                    header.appendChild(headerText);
+                    metaDiv.appendChild(header);
+                    
+                    const contentPreview = createElement('div', `${meta.content_preview}...`, 'result-text');
+                    contentPreview.style.fontSize = '0.9em';
+                    contentPreview.style.color = '#666';
+                    metaDiv.appendChild(contentPreview);
+                    
+                    metadataDiv.appendChild(metaDiv);
+                });
+                
+                results.appendChild(metadataDiv);
+            } else {
+                const emptyState = createElement('div', 'No sources found', 'empty-state');
+                results.appendChild(emptyState);
+            }
+        }
+        
+        // Get female voice
+        function getFemaleVoice() {
+            if (!synthesis) return null;
+            
+            const voices = synthesis.getVoices();
+            if (voices.length === 0) return null;
+            
+            // Try to find a female voice
+            // Common female voice names in different browsers
+            const femaleVoiceNames = [
+                'Samantha', 'Karen', 'Victoria', 'Fiona', 'Tessa',
+                'Samantha (Enhanced)', 'Karen (Enhanced)', 'Victoria (Enhanced)',
+                'Google UK English Female', 'Microsoft Zira', 'Microsoft Hazel',
+                'Alex', 'Zira', 'Hazel'
+            ];
+            
+            // First, try to find by name
+            for (const name of femaleVoiceNames) {
+                const voice = voices.find(v => 
+                    v.name.includes(name) || 
+                    v.name.toLowerCase().includes('female') ||
+                    (v.name.includes('Samantha') || v.name.includes('Karen') || 
+                     v.name.includes('Victoria') || v.name.includes('Fiona') ||
+                     v.name.includes('Tessa') || v.name.includes('Zira') ||
+                     v.name.includes('Hazel'))
+                );
+                if (voice) return voice;
+            }
+            
+            // Fallback: find any voice that's not explicitly male
+            const nonMaleVoices = voices.filter(v => 
+                !v.name.toLowerCase().includes('male') && 
+                !v.name.toLowerCase().includes('david') &&
+                !v.name.toLowerCase().includes('daniel') &&
+                !v.name.toLowerCase().includes('tom') &&
+                !v.name.toLowerCase().includes('mark')
+            );
+            
+            return nonMaleVoices.length > 0 ? nonMaleVoices[0] : voices[0];
+        }
+        
+        // Text-to-speech function with female voice
+        function speakText(text) {
+            if (!synthesis) return;
+            
+            // Cancel any ongoing speech
+            synthesis.cancel();
+            
+            // Clean text (remove citations in brackets for better speech)
+            const cleanText = text.replace(/\[.*?\]/g, '').trim();
+            
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'en-US';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1; // Slightly higher pitch for more feminine sound
+            utterance.volume = 1.0;
+            
+            // Set female voice (load voices first if needed)
+            function setVoice() {
+                const voices = synthesis.getVoices();
+                if (voices.length > 0) {
+                    const femaleVoice = getFemaleVoice();
+                    if (femaleVoice) {
+                        utterance.voice = femaleVoice;
+                    }
+                }
+            }
+            
+            // Voices might not be loaded immediately
+            const voices = synthesis.getVoices();
+            if (voices.length > 0) {
+                setVoice();
+            } else {
+                // Wait for voices to load
+                synthesis.onvoiceschanged = () => {
+                    setVoice();
+                    synthesis.onvoiceschanged = null;
+                };
+            }
+            
+            utterance.onstart = () => {
+                isPlaying = true;
+                const playBtn = document.getElementById('playAnswerBtn');
+                const stopBtn = document.getElementById('stopAnswerBtn');
+                if (playBtn) playBtn.style.display = 'none';
+                if (stopBtn) stopBtn.style.display = 'flex';
+            };
+            
+            utterance.onend = () => {
+                isPlaying = false;
+                const playBtn = document.getElementById('playAnswerBtn');
+                const stopBtn = document.getElementById('stopAnswerBtn');
+                if (playBtn) {
+                    playBtn.style.display = 'flex';
+                    playBtn.classList.remove('playing');
+                }
+                if (stopBtn) stopBtn.style.display = 'none';
+            };
+            
+            utterance.onerror = (event) => {
+                isPlaying = false;
+                const playBtn = document.getElementById('playAnswerBtn');
+                const stopBtn = document.getElementById('stopAnswerBtn');
+                if (playBtn) {
+                    playBtn.style.display = 'flex';
+                    playBtn.classList.remove('playing');
+                }
+                if (stopBtn) stopBtn.style.display = 'none';
+                showError(queryStatus, 'Error playing audio. Please try again.');
+            };
+            
+            currentUtterance = utterance;
+            synthesis.speak(utterance);
+        }
+
+
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                document.getElementById(`${tabName}Tab`).classList.add('active');
+            });
+        });
+        
+        // Display Technical Info
+        function displayTechnicalInfo(techInfo) {
+            const container = document.getElementById('technicalInfo');
+            if (!container || !techInfo) return;
+            
+            container.innerHTML = `
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <h4>Total Chunks</h4>
+                        <div class="value">${techInfo.total_chunks_in_db || techInfo.num_chunks || 'N/A'}</div>
+                        <div class="label">Documents in vector store</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Chunks Retrieved</h4>
+                        <div class="value">${techInfo.chunks_retrieved || 'N/A'}</div>
+                        <div class="label">For this query</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Avg Relevance</h4>
+                        <div class="value">${techInfo.avg_relevance_score ? (techInfo.avg_relevance_score * 100).toFixed(1) + '%' : 'N/A'}</div>
+                        <div class="label">Average similarity score</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Max Relevance</h4>
+                        <div class="value">${techInfo.max_relevance_score ? (techInfo.max_relevance_score * 100).toFixed(1) + '%' : 'N/A'}</div>
+                        <div class="label">Best match score</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Embedding Model</h4>
+                        <div class="value" style="font-size: 1.1em;">${techInfo.embedding_model || 'N/A'}</div>
+                        <div class="label">OpenAI model used</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Embedding Dimension</h4>
+                        <div class="value">${techInfo.embedding_dimension || 'N/A'}</div>
+                        <div class="label">Vector dimensions</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Vector Database</h4>
+                        <div class="value" style="font-size: 1.1em;">${techInfo.vector_db || 'N/A'}</div>
+                        <div class="label">Storage backend</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>LLM Model</h4>
+                        <div class="value" style="font-size: 1.1em;">${techInfo.llm_model || 'gpt-4o-mini'}</div>
+                        <div class="label">Language model</div>
+                    </div>
+                    ${techInfo.chunk_size ? `
+                    <div class="tech-card">
+                        <h4>Chunk Size</h4>
+                        <div class="value">${techInfo.chunk_size}</div>
+                        <div class="label">Characters per chunk</div>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Chunk Overlap</h4>
+                        <div class="value">${techInfo.chunk_overlap}</div>
+                        <div class="label">Overlap between chunks</div>
+                    </div>
+                    ` : ''}
+                    ${techInfo.total_characters ? `
+                    <div class="tech-card">
+                        <h4>Total Characters</h4>
+                        <div class="value">${techInfo.total_characters.toLocaleString()}</div>
+                        <div class="label">Processed text length</div>
+                    </div>
+                    ` : ''}
+                    ${techInfo.source ? `
+                    <div class="tech-card">
+                        <h4>Source</h4>
+                        <div class="value" style="font-size: 0.9em; word-break: break-all;">${sanitizeText(techInfo.source)}</div>
+                        <div class="label">${techInfo.source_type || 'Document'}</div>
+                    </div>
+                    ` : ''}
+                </div>
+                ${techInfo.similarity_metric ? `
+                <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px;">
+                    <strong>Similarity Metric:</strong> ${techInfo.similarity_metric}
+                </div>
+                ` : ''}
+            `;
+        }
+        
+        // Display RAG Dashboard
+        function displayDashboard(techInfo, metadata) {
+            const container = document.getElementById('ragDashboard');
+            if (!container || !techInfo || !metadata) return;
+            
+            // Calculate statistics
+            const scores = metadata.map(m => m.score || 0);
+            const scoreDistribution = {
+                high: scores.filter(s => s >= 0.8).length,
+                medium: scores.filter(s => s >= 0.6 && s < 0.8).length,
+                low: scores.filter(s => s < 0.6).length
+            };
+            
+            const maxBarHeight = 150;
+            const maxScore = Math.max(...scores, 1);
+            
+            container.innerHTML = `
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>📊 Relevance Score Distribution</h3>
+                        <div class="chart-container">
+                            ${metadata.map((meta, idx) => {
+                                const height = (meta.score / maxScore) * maxBarHeight;
+                                return `<div class="chart-bar" style="height: ${height}px;" data-value="${(meta.score * 100).toFixed(0)}%"></div>`;
+                            }).join('')}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.85em; color: #666; text-align: center;">
+                            Chunk ${metadata.map((_, i) => i + 1).join(' | ')}
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>📈 Score Statistics</h3>
+                        <div class="metric-item">
+                            <span class="metric-label">Average Score</span>
+                            <span class="metric-value">${techInfo.avg_relevance_score ? (techInfo.avg_relevance_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Maximum Score</span>
+                            <span class="metric-value" style="color: var(--success-color);">${techInfo.max_relevance_score ? (techInfo.max_relevance_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Minimum Score</span>
+                            <span class="metric-value" style="color: var(--error-color);">${techInfo.min_relevance_score ? (techInfo.min_relevance_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Score Range</span>
+                            <span class="metric-value">${techInfo.max_relevance_score && techInfo.min_relevance_score ? 
+                                ((techInfo.max_relevance_score - techInfo.min_relevance_score) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>🎯 Quality Distribution</h3>
+                        <div style="margin: 15px 0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="font-size: 0.9em;">High (≥80%)</span>
+                                <span style="font-weight: 600; color: var(--success-color);">${scoreDistribution.high}</span>
+                            </div>
+                            <div class="score-bar">
+                                <div class="score-fill" style="width: ${(scoreDistribution.high / metadata.length) * 100}%; background: var(--success-color);"></div>
+                            </div>
+                        </div>
+                        <div style="margin: 15px 0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="font-size: 0.9em;">Medium (60-80%)</span>
+                                <span style="font-weight: 600; color: var(--warning-color);">${scoreDistribution.medium}</span>
+                            </div>
+                            <div class="score-bar">
+                                <div class="score-fill" style="width: ${(scoreDistribution.medium / metadata.length) * 100}%; background: var(--warning-color);"></div>
+                            </div>
+                        </div>
+                        <div style="margin: 15px 0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="font-size: 0.9em;">Low (&lt;60%)</span>
+                                <span style="font-weight: 600; color: var(--error-color);">${scoreDistribution.low}</span>
+                            </div>
+                            <div class="score-bar">
+                                <div class="score-fill" style="width: ${(scoreDistribution.low / metadata.length) * 100}%; background: var(--error-color);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>🔍 Retrieval Details</h3>
+                        <div class="metric-item">
+                            <span class="metric-label">Total Chunks in DB</span>
+                            <span class="metric-value">${techInfo.total_chunks_in_db || techInfo.num_chunks || 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Chunks Retrieved</span>
+                            <span class="metric-value">${techInfo.chunks_retrieved || metadata.length}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Retrieval Rate</span>
+                            <span class="metric-value">${techInfo.total_chunks_in_db ? 
+                                ((techInfo.chunks_retrieved / techInfo.total_chunks_in_db) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Top K Results</span>
+                            <span class="metric-value">${metadata.length}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>⚙️ System Configuration</h3>
+                        <div class="metric-item">
+                            <span class="metric-label">Embedding Model</span>
+                            <span class="metric-value" style="font-size: 0.85em;">${techInfo.embedding_model || 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Vector Dimension</span>
+                            <span class="metric-value">${techInfo.embedding_dimension || 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Vector Database</span>
+                            <span class="metric-value">${techInfo.vector_db || 'N/A'}</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">LLM Model</span>
+                            <span class="metric-value" style="font-size: 0.85em;">${techInfo.llm_model || 'gpt-4o-mini'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>📋 Source Breakdown</h3>
+                        ${metadata.map((meta, idx) => {
+                            // Truncate long URLs/sources
+                            let sourceDisplay = sanitizeText(meta.source || 'Unknown');
+                            if (sourceDisplay.length > 60) {
+                                sourceDisplay = sourceDisplay.substring(0, 57) + '...';
+                            }
+                            return `
+                            <div class="metric-item">
+                                <span class="metric-label" title="${sanitizeText(meta.source || 'Unknown')}">
+                                    <strong>Chunk ${meta.chunk_id}:</strong> ${sourceDisplay}
+                                </span>
+                                <span class="metric-value" style="color: ${meta.score >= 0.8 ? 'var(--success-color)' : meta.score >= 0.6 ? 'var(--warning-color)' : 'var(--error-color)'};">
+                                    ${(meta.score * 100).toFixed(1)}%
+                                </span>
+                            </div>
+                        `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize sessions list
+        sessionsList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Sessions will appear here after you upload a PDF or process a URL</p>';
+
+        // Handle page visibility for request cancellation
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && abortController) {
+                abortController.abort();
+            }
+            // Stop speech if page is hidden
+            if (document.hidden && synthesis && isPlaying) {
+                synthesis.cancel();
+                isPlaying = false;
+                const playBtn = document.getElementById('playAnswerBtn');
+                const stopBtn = document.getElementById('stopAnswerBtn');
+                if (playBtn) {
+                    playBtn.style.display = 'flex';
+                    playBtn.classList.remove('playing');
+                }
+                if (stopBtn) stopBtn.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

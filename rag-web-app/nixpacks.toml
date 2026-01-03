@@ -14,5 +14,5 @@ cmds = [
 cmds = []
 
 [start]
-cmd = "cd backend && source venv/bin/activate && python app.py"
+cmd = "cd backend && venv/bin/python app.py"
 

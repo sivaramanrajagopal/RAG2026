@@ -193,6 +193,18 @@ async def health_check():
     """Health check endpoint for Railway"""
     return {"status": "healthy", "service": "RAG API"}
 
+# Serve frontend static files (for Railway deployment)
+try:
+    from fastapi.staticfiles import StaticFiles
+    from pathlib import Path
+    
+    frontend_path = Path(__file__).parent.parent / "frontend"
+    if frontend_path.exists():
+        app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="static")
+except Exception as e:
+    # Frontend not available, API-only mode
+    print(f"Frontend not available: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

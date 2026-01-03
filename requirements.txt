@@ -1,0 +1,5 @@
+# This file helps Railway detect Python
+# Actual requirements are in rag-web-app/backend/requirements.txt
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+

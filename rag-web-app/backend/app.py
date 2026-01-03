@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 from rag import ingest_document, answer_question, ingest_url, get_session_technical_info
 
 load_dotenv()
-os.makedirs("../uploads", exist_ok=True)
+
+# Create uploads directory (relative to backend or absolute)
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", "../uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = FastAPI(
     title="RAG Web App API",
@@ -64,7 +67,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     if len(file_content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=f"File size exceeds {MAX_FILE_SIZE / (1024*1024)}MB limit")
     
-    file_path = f"../uploads/{safe_filename}"
+    file_path = os.path.join(UPLOADS_DIR, safe_filename)
     
     try:
         with open(file_path, "wb") as f:

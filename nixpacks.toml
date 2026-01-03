@@ -1,12 +1,16 @@
 [phases.setup]
-nixPkgs = ["python39"]
+nixPkgs = ["python39", "pip"]
 
 [phases.install]
-cmds = ["cd rag-web-app/backend && pip install -r requirements.txt"]
+cmds = [
+  "cd rag-web-app/backend",
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
 
 [phases.build]
 cmds = []
 
 [start]
-cmd = "cd rag-web-app/backend && python app.py"
+cmd = "cd rag-web-app/backend && python3 app.py"
 

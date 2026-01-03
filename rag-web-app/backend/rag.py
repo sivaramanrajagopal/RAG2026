@@ -16,8 +16,9 @@ load_dotenv()
 if not os.getenv("OPENAI_API_KEY"):
     raise ValueError("OPENAI_API_KEY environment variable is required. Set it in Railway environment variables.")
 
-UPLOAD_DIR = Path("../uploads")
-VECDB_DIR = Path("../vecdb")
+# Use environment variables or default to relative paths
+UPLOAD_DIR = Path(os.getenv("UPLOADS_DIR", "../uploads"))
+VECDB_DIR = Path(os.getenv("VECDB_DIR", "../vecdb"))
 
 # Ensure directories exist
 UPLOAD_DIR.mkdir(exist_ok=True, parents=True)

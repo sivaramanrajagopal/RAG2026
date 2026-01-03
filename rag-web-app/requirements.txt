@@ -1,0 +1,4 @@
+# This file helps Nixpacks detect Python
+# Actual requirements are in backend/requirements.txt
+# Nixpacks will use the nixpacks.toml configuration
+
